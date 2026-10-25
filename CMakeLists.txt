@@ -6,12 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_compile_options(-Wall -Wextra -Werror)
 
-add_executable(rss_reader src/tui/main.cpp)
-target_link_libraries(rss_reader PRIVATE rss_core)
-
-add_subdirectory(src/core)
-
-# --- GoogleTest для тестов ---
 include(FetchContent)
 FetchContent_Declare(
     pugixml
@@ -26,9 +20,15 @@ FetchContent_Declare(
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
 FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
+# --- Добавляем папки проекта ---
+find_package(CURL REQUIRED)     # <-- CURL нужен здесь
+add_subdirectory(src/core)      # <-- ЭТОЙ СТРОКИ У ТЕБЯ НЕ ХВАТАЕТ!
 add_subdirectory(tests)
+
+# --- Собираем исполняемый файл ---
+add_executable(rss_reader src/tui/main.cpp)
+target_link_libraries(rss_reader PRIVATE rss_core)

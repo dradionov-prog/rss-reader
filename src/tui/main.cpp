@@ -1,40 +1,47 @@
 #include <iostream>
-#include <fstream>
-#include <sstream>
 #include <memory>
 
 #include "ParserRegistry.hpp"
 #include "Rss2Parser.hpp"
 #include "AtomParser.hpp"
+#include "HttpLoader.hpp"
+#include "HtmlRenderer.hpp"
 
 using namespace rss;
 
 int main() {
-    std::cout << "rss-reader v0.2.0 (parsers ready)\n";
+    std::cout << "rss-reader v0.3.0 (HTTP + HTML rendering)\n";
 
-    // Регистрируем парсеры
+    // 1. Настраиваем реестр
     ParserRegistry registry;
     registry.add(std::make_shared<Rss2Parser>());
     registry.add(std::make_shared<AtomParser>());
 
-    // Читаем файл (для теста можно взять наш тестовый файл)
-    std::ifstream file("../testdata/rss/test_rss.xml");
-    if (!file) {
-        std::cerr << "File not found\n";
+    // 2. Загружаем ленту по HTTP
+    HttpLoader loader;
+    std::string url = "https://habr.com/ru/rss/best/"; // Возьмем реальную ленту
+    std::cout << "Downloading " << url << "...\n";
+    
+    LoadResult res = loader.load(url);
+    if (res.body.empty()) {
+        std::cerr << "Failed to download or empty response.\n";
         return 1;
     }
-    std::stringstream ss;
-    ss << file.rdbuf();
 
-    // Парсим
-    Feed feed = registry.parse(ss.str());
+    // 3. Парсим XML
+    Feed feed = registry.parse(res.body);
+    std::cout << "Feed: " << feed.title << " (" << feed.articles.size() << " articles)\n\n";
 
-    // Выводим результат
-    std::cout << "Feed: " << feed.title << "\n";
-    std::cout << "Articles: " << feed.articles.size() << "\n\n";
-    for (const auto& art : feed.articles) {
-        std::cout << "- " << art.title << " (" << art.link << ")\n";
-        std::cout << "  HTML: " << art.contentHtml.substr(0, 30) << "...\n";
+    // 4. Берем первую статью и рендерим её HTML
+    if (!feed.articles.empty()) {
+        const auto& art = feed.articles[0];
+        std::cout << "Title: " << art.title << "\n";
+        std::cout << "----------------------------------------\n";
+        
+        HtmlRenderer renderer;
+        // Отрисовываем с шириной 60 символов
+        std::string text = renderer.render(art.contentHtml, 60);
+        std::cout << text << "\n";
     }
 
     return 0;
